@@ -309,6 +309,29 @@ button:active {
     background-color: #4341a0;
 }
 
+/* Host guess indicator for auto-submitted guesses */
+.host-guess-indicator {
+    width: 100%;
+    max-width: 350px;
+    padding: 10px;
+    margin: 10px 0;
+    background-color: #fffcf0; /* Light yellow background */
+    border: 1px solid #ff9500; /* Apple orange border */
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+    font-size: 1em;
+    color: #ff9500; /* Apple orange text */
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
 /* iPhone specific considerations */
 @media (max-width: 480px) { /* Common breakpoint for phones */
     #keypad {

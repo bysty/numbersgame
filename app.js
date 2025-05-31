@@ -283,10 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateAndDisplayOptimalGuess() {
-        // Placeholder for "Optimal Guess for You"
-        // This is where the core mathematical strategy will go.
-        // For now, let's suggest a simple mid-point or a safe guess.
-
+        // Enhanced optimal guess calculation based on different strategies
+        
         // Check if it's the host's forced turn
         if (currentPlayerIndex === hostPlayerIndex) {
             // Count non-host players who have guessed
@@ -304,171 +302,376 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // If all non-host players have guessed, it's a forced turn
             if (nonHostPlayersWhoGuessed >= nonHostPlayers && numPlayers > 1) {
-                optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> Choose the closest available number to your secret number.";
+                const forcedGuess = calculateHostForcedGuess();
+                if (forcedGuess) {
+                    optimalGuessDisplay.innerHTML = `<strong>Host's Forced Guess:</strong> ${forcedGuess} (closest to secret number)`;
+                    // Add a visual indicator to the game screen
+                    const hostGuessIndicator = document.createElement('div');
+                    hostGuessIndicator.className = 'host-guess-indicator';
+                    hostGuessIndicator.textContent = `Auto-selecting for host: ${forcedGuess}`;
+                    
+                    // Insert the indicator before the guess input section
+                    const guessInputSection = document.getElementById('guess-input-section');
+                    if (guessInputSection.previousElementSibling.className !== 'host-guess-indicator') {
+                        guessInputSection.parentNode.insertBefore(hostGuessIndicator, guessInputSection);
+                    }
+                    
+                    // Auto-submit the host's guess if we have a valid forced guess
+                    if (isValidGuess(forcedGuess)) {
+                        playerGuessInput.value = forcedGuess;
+                        submitGuessBtn.textContent = `Auto-submitting ${forcedGuess}...`;
+                        setTimeout(() => {
+                            submitGuessBtn.click();
+                            // Reset button text after submission
+                            setTimeout(() => {
+                                submitGuessBtn.textContent = "Submit Guess";
+                                // Remove the indicator after processing
+                                const indicators = document.getElementsByClassName('host-guess-indicator');
+                                while (indicators.length > 0) {
+                                    indicators[0].parentNode.removeChild(indicators[0]);
+                                }
+                            }, 500);
+                        }, 1500); // Slightly longer delay for better UI feedback
+                    } else {
+                        optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> No valid guesses available!";
+                    }
+                } else {
+                    optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> Unable to calculate - need secret number.";
+                }
                 return; // Don't calculate optimal guess for host in this scenario
             }
         }
 
         const guessableSlots = currentHigh - currentLow - 1;
         let optimalGuess = "";
+        let strategyExplanation = "";
 
         if (guessableSlots <= 0) {
             optimalGuess = "No valid guesses!";
         } else if (guessableSlots === 1) {
             optimalGuess = `Forced to guess ${currentLow + 1}`;
+            strategyExplanation = "Only one possible guess.";
         } else {
-            // Try to find a "trap" guess
-            // The strategy is to make a guess that leaves exactly 1 slot for a target player
-            // This forces them into a situation where they have only one possible guess
-            
-            // Simplified target player calculation - "opposite" player
-            // Find player roughly half-way around the circle from current player
-            let targetPlayerIndex = (currentPlayerIndex + Math.floor(numPlayers / 2)) % numPlayers;
-            
-            // Adjust if target is host - we'll target the next player after host
-            if (targetPlayerIndex === hostPlayerIndex) {
-                targetPlayerIndex = (targetPlayerIndex + 1) % numPlayers;
-            }
-            
-            // Simplified calculation of turns to target player
-            // This avoids the complex loop that tried to account for host skipping
-            // Instead, we'll estimate based on player positions and adjust if needed
-            
-            let k; // Number of guesses before target player's turn
-            
-            // Calculate distance between current player and target
-            if (targetPlayerIndex > currentPlayerIndex) {
-                k = targetPlayerIndex - currentPlayerIndex;
-            } else {
-                k = numPlayers + targetPlayerIndex - currentPlayerIndex;
-            }
-            
-            // Adjust for host skipping - if host is between current and target
-            // and it's not host's forced turn, the host gets skipped
-            let isHostBetween = false;
-            let nonHostPlayersWhoGuessed = 0;
-            let nonHostPlayers = 0;
-            
-            // Count players who have guessed
-            for (let i = 0; i < numPlayers; i++) {
-                if (i !== hostPlayerIndex) {
-                    nonHostPlayers++;
-                    if (playersWhoHaveGuessedThisSubRound.has(i)) {
-                        nonHostPlayersWhoGuessed++;
-                    }
-                }
-            }
-            
-            // Check if host is between current player and target
-            if (hostPlayerIndex > currentPlayerIndex && hostPlayerIndex < targetPlayerIndex) {
-                isHostBetween = true;
-            } else if (currentPlayerIndex > targetPlayerIndex && 
-                     (hostPlayerIndex > currentPlayerIndex || hostPlayerIndex < targetPlayerIndex)) {
-                isHostBetween = true;
-            }
-            
-            // If host is between and it's not their forced turn, reduce k by 1
-            if (isHostBetween && nonHostPlayersWhoGuessed < nonHostPlayers) {
-                k--;
-            }
-            
-            // Safety checks
-            if (k <= 0) k = 1;
-            if (k > numPlayers - 1) k = numPlayers - 1;
-
-            // Calculate trap guesses
-            // We want to make a guess that leaves exactly k-1 slots for intermediate players
-            // This ensures target player is left with exactly 1 choice
-            
-            // Trap Guess 1: if number is LOWER than our guess
-            // This creates range [currentLow, G_trap1-1] with k-1 slots
-            // Meaning: (G_trap1-1) - currentLow - 1 = k-1
-            // Solving for G_trap1: G_trap1 = currentLow + k + 1
-            let G_trap1 = currentLow + k + 1;
-            
-            // Trap Guess 2: if number is HIGHER than our guess
-            // This creates range [G_trap2+1, currentHigh] with k-1 slots
-            // Meaning: currentHigh - (G_trap2+1) - 1 = k-1
-            // Solving for G_trap2: G_trap2 = currentHigh - k - 1
-            let G_trap2 = currentHigh - k - 1;
-            
-            // Helper function to check if a number is a valid guess
-            function isValidGuess(num) {
-                return num > currentLow && 
-                       num < currentHigh && 
-                       !guessHistory.some(h => h.guess === num) && 
-                       !validRangeNumbers.includes(num);
-            }
-            
-            // Find valid trap guesses
-            let candidateGuesses = [];
-            if (isValidGuess(G_trap1)) {
-                candidateGuesses.push(G_trap1);
-            }
-            if (isValidGuess(G_trap2) && G_trap2 !== G_trap1) {
-                candidateGuesses.push(G_trap2);
-            }
-
-            if (candidateGuesses.length > 0) {
-                // If we have multiple trap options, prefer the one that makes the other segment larger
-                // This reduces the chance that the secret number is in our trap segment
-                if (candidateGuesses.length === 2) {
-                    // Calculate slots in complementary segments
-                    let slots_other1 = currentHigh - (G_trap1 + 1) - 1; // Slots if G_trap1 is chosen
-                    let slots_other2 = (G_trap2 - 1) - currentLow - 1;  // Slots if G_trap2 is chosen
-                    // Choose the guess that creates larger complementary segment
-                    optimalGuess = slots_other1 >= slots_other2 ? G_trap1 : G_trap2;
+            // Determine which strategy to use based on range size
+            if (guessableSlots <= 5) {
+                // Defensive strategy for small ranges
+                const defensiveGuess = calculateDefensiveGuess();
+                optimalGuess = defensiveGuess.guess;
+                strategyExplanation = defensiveGuess.explanation;
+            } else if (guessableSlots <= 20) {
+                // Trap strategy for medium ranges
+                const trapResult = calculateTrapGuess();
+                if (trapResult.viable) {
+                    optimalGuess = trapResult.guess;
+                    strategyExplanation = trapResult.explanation;
                 } else {
-                    optimalGuess = candidateGuesses[0];
+                    // Fallback to defensive if trap not viable
+                    const defensiveGuess = calculateDefensiveGuess();
+                    optimalGuess = defensiveGuess.guess;
+                    strategyExplanation = "Trap not viable. " + defensiveGuess.explanation;
                 }
-                optimalGuess = `Try to trap Player ${targetPlayerIndex + 1} with: ${optimalGuess}`;
             } else {
-                // Fallback: Find a safe guess if no trap is possible
-                
-                // First try bisection (middle of range)
-                let mid = Math.floor((currentLow + currentHigh) / 2);
-                
-                // Helper function to find next valid guess starting from a position
-                function findNextValidGuess(start, increment, limit) {
-                    let guess = start;
-                    while (!isValidGuess(guess) && 
-                          ((increment > 0 && guess < limit - 1) || 
-                           (increment < 0 && guess > limit + 1))) {
-                        guess += increment;
-                    }
-                    return isValidGuess(guess) ? guess : null;
-                }
-                
-                // Try to find valid guesses using different strategies
-                let validGuess = findNextValidGuess(mid, 0, 0); // Check midpoint first
-                
-                if (!validGuess) {
-                    // Try searching up from midpoint
-                    validGuess = findNextValidGuess(mid, 1, currentHigh);
-                }
-                
-                if (!validGuess) {
-                    // Try searching down from midpoint
-                    validGuess = findNextValidGuess(mid, -1, currentLow);
-                }
-                
-                if (!validGuess) {
-                    // Last resort: try from bottom and top of range
-                    validGuess = findNextValidGuess(currentLow + 1, 1, currentHigh);
-                    
-                    if (!validGuess) {
-                        validGuess = findNextValidGuess(currentHigh - 1, -1, currentLow);
-                    }
-                }
-                
-                if (validGuess) {
-                    optimalGuess = `Safe guess: ${validGuess}`;
-                } else {
-                    optimalGuess = "Complex situation. Choose carefully!";
+                // Aggressive/bisection strategy for large ranges
+                const aggressiveGuess = calculateAggressiveGuess();
+                optimalGuess = aggressiveGuess.guess;
+                strategyExplanation = aggressiveGuess.explanation;
+            }
+        }
+        
+        // Display the optimal guess with strategy explanation
+        if (optimalGuess && strategyExplanation) {
+            optimalGuessDisplay.innerHTML = `<strong>${optimalGuess}</strong><br><small>${strategyExplanation}</small>`;
+        } else {
+            optimalGuessDisplay.innerHTML = optimalGuess;
+        }
+    }
+
+    // Helper function to check if a number is a valid guess
+    function isValidGuess(num) {
+        return num > currentLow && 
+               num < currentHigh && 
+               !guessHistory.some(h => h.guess === num) && 
+               !validRangeNumbers.includes(num);
+    }
+
+    // Calculate defensive guess - pick numbers close to boundaries to minimize risk
+    function calculateDefensiveGuess() {
+        // Try numbers close to boundaries (safer play)
+        const lowerOption = currentLow + 1;
+        const upperOption = currentHigh - 1;
+        
+        // Check if these options are valid
+        const lowerValid = isValidGuess(lowerOption);
+        const upperValid = isValidGuess(upperOption);
+        
+        if (lowerValid && upperValid) {
+            // If both are valid, choose the one that's less likely to be the secret number
+            // Simple heuristic: if more guesses have been higher than lower, guess high
+            const higherGuesses = guessHistory.filter(h => h.guess > (currentLow + currentHigh) / 2).length;
+            const lowerGuesses = guessHistory.filter(h => h.guess < (currentLow + currentHigh) / 2).length;
+            
+            if (higherGuesses >= lowerGuesses) {
+                return {
+                    guess: `Defensive: ${upperOption}`,
+                    explanation: "Playing it safe near the upper boundary."
+                };
+            } else {
+                return {
+                    guess: `Defensive: ${lowerOption}`,
+                    explanation: "Playing it safe near the lower boundary."
+                };
+            }
+        } else if (lowerValid) {
+            return {
+                guess: `Defensive: ${lowerOption}`,
+                explanation: "Playing it safe near the lower boundary."
+            };
+        } else if (upperValid) {
+            return {
+                guess: `Defensive: ${upperOption}`,
+                explanation: "Playing it safe near the upper boundary."
+            };
+        }
+        
+        // If boundaries aren't valid, find closest valid number to a boundary
+        let bestGuess = null;
+        let minDistance = Infinity;
+        
+        for (let num = currentLow + 1; num < currentHigh; num++) {
+            if (isValidGuess(num)) {
+                const distanceToBoundary = Math.min(num - currentLow, currentHigh - num);
+                if (distanceToBoundary < minDistance) {
+                    minDistance = distanceToBoundary;
+                    bestGuess = num;
                 }
             }
         }
-        optimalGuessDisplay.innerHTML = optimalGuess; // Use innerHTML for strong tags if needed
+        
+        if (bestGuess !== null) {
+            return {
+                guess: `Defensive: ${bestGuess}`,
+                explanation: "Playing it safe near a boundary."
+            };
+        }
+        
+        // Fallback to bisection if no defensive options work
+        return calculateAggressiveGuess();
+    }
+
+    // Calculate trap guess - attempt to force a target player into a no-win situation
+    function calculateTrapGuess() {
+        // Target player calculation - "opposite" player
+        let targetPlayerIndex = (currentPlayerIndex + Math.floor(numPlayers / 2)) % numPlayers;
+        
+        // Adjust if target is host - we'll target the next player after host
+        if (targetPlayerIndex === hostPlayerIndex) {
+            targetPlayerIndex = (targetPlayerIndex + 1) % numPlayers;
+        }
+        
+        // Calculate turns to target (k)
+        let k; // Number of guesses before target player's turn
+        
+        // Calculate distance between current player and target
+        if (targetPlayerIndex > currentPlayerIndex) {
+            k = targetPlayerIndex - currentPlayerIndex;
+        } else {
+            k = numPlayers + targetPlayerIndex - currentPlayerIndex;
+        }
+        
+        // Adjust for host skipping - if host is between current and target
+        // and it's not host's forced turn, the host gets skipped
+        let isHostBetween = false;
+        let nonHostPlayersWhoGuessed = 0;
+        let nonHostPlayers = 0;
+        
+        // Count players who have guessed
+        for (let i = 0; i < numPlayers; i++) {
+            if (i !== hostPlayerIndex) {
+                nonHostPlayers++;
+                if (playersWhoHaveGuessedThisSubRound.has(i)) {
+                    nonHostPlayersWhoGuessed++;
+                }
+            }
+        }
+        
+        // Check if host is between current player and target
+        if (hostPlayerIndex > currentPlayerIndex && hostPlayerIndex < targetPlayerIndex) {
+            isHostBetween = true;
+        } else if (currentPlayerIndex > targetPlayerIndex && 
+                 (hostPlayerIndex > currentPlayerIndex || hostPlayerIndex < targetPlayerIndex)) {
+            isHostBetween = true;
+        }
+        
+        // If host is between and it's not their forced turn, reduce k by 1
+        if (isHostBetween && nonHostPlayersWhoGuessed < nonHostPlayers) {
+            k--;
+        }
+        
+        // Safety checks
+        if (k <= 0) k = 1;
+        if (k > numPlayers - 1) k = numPlayers - 1;
+
+        // Calculate trap guesses
+        // Trap Guess 1: if number is LOWER than our guess
+        let G_trap1 = currentLow + k + 1;
+        
+        // Trap Guess 2: if number is HIGHER than our guess
+        let G_trap2 = currentHigh - k - 1;
+        
+        // Find valid trap guesses
+        let candidateGuesses = [];
+        if (isValidGuess(G_trap1)) {
+            candidateGuesses.push({
+                guess: G_trap1,
+                complementarySlots: currentHigh - (G_trap1 + 1) - 1
+            });
+        }
+        if (isValidGuess(G_trap2) && G_trap2 !== G_trap1) {
+            candidateGuesses.push({
+                guess: G_trap2,
+                complementarySlots: (G_trap2 - 1) - currentLow - 1
+            });
+        }
+
+        if (candidateGuesses.length > 0) {
+            // If we have multiple trap options, prefer the one that makes the other segment larger
+            let bestTrap;
+            if (candidateGuesses.length === 2) {
+                bestTrap = candidateGuesses[0].complementarySlots >= candidateGuesses[1].complementarySlots 
+                    ? candidateGuesses[0] 
+                    : candidateGuesses[1];
+            } else {
+                bestTrap = candidateGuesses[0];
+            }
+            
+            return {
+                guess: `Trap: ${bestTrap.guess}`,
+                explanation: `Setting trap for Player ${targetPlayerIndex + 1} with ${k-1} slots for intermediates.`,
+                viable: true
+            };
+        }
+        
+        // No viable trap
+        return { viable: false };
+    }
+
+    // Calculate aggressive/bisection guess - quickly narrow down the range
+    function calculateAggressiveGuess() {
+        // Find a guess close to the middle of the range
+        const idealMid = Math.floor((currentLow + currentHigh) / 2);
+        
+        // Helper function to find next valid guess near a target
+        function findNearestValidGuess(target) {
+            if (isValidGuess(target)) return target;
+            
+            // Search outward from target
+            for (let offset = 1; offset < (currentHigh - currentLow); offset++) {
+                if (target - offset > currentLow && isValidGuess(target - offset)) {
+                    return target - offset;
+                }
+                if (target + offset < currentHigh && isValidGuess(target + offset)) {
+                    return target + offset;
+                }
+            }
+            return null;
+        }
+        
+        const midGuess = findNearestValidGuess(idealMid);
+        
+        if (midGuess !== null) {
+            // Check if we're really close to midpoint or had to adjust a lot
+            const midpointDeviation = Math.abs(midGuess - idealMid) / (currentHigh - currentLow);
+            
+            if (midpointDeviation <= 0.1) {
+                return {
+                    guess: `Aggressive: ${midGuess}`,
+                    explanation: "Cutting the range in half for maximum information gain."
+                };
+            } else {
+                return {
+                    guess: `Semi-Aggressive: ${midGuess}`,
+                    explanation: "Approximating a bisection strategy with available numbers."
+                };
+            }
+        }
+        
+        // If we can't find a valid guess near the middle, try any valid guess
+        for (let num = currentLow + 1; num < currentHigh; num++) {
+            if (isValidGuess(num)) {
+                return {
+                    guess: `Fallback: ${num}`,
+                    explanation: "No ideal guess available - this is the safest option."
+                };
+            }
+        }
+        
+        // If we get here, there are no valid guesses (shouldn't happen, but handle it)
+        return {
+            guess: "No valid guesses!",
+            explanation: "All numbers in range have been used or excluded."
+        };
+    }
+
+    // Calculate the host's forced guess - closest to secret number
+    function calculateHostForcedGuess() {
+        // Find all valid guesses in the current range
+        const validGuesses = [];
+        for (let num = currentLow + 1; num < currentHigh; num++) {
+            if (isValidGuess(num)) {
+                validGuesses.push(num);
+            }
+        }
+        
+        if (validGuesses.length === 0) {
+            return null; // No valid guesses available
+        }
+        
+        // If we only have one valid guess, that's the forced guess
+        if (validGuesses.length === 1) {
+            return validGuesses[0];
+        }
+        
+        // Use a heuristic to estimate the secret number based on the guessing history
+        // We'll look at the narrowing of the range over time
+        let estimatedSecret = Math.floor((currentLow + currentHigh) / 2);
+        
+        // If there's a significant guess history, refine our estimate
+        if (guessHistory.length >= 2) {
+            // Look at the pattern of range adjustments
+            // If the range was narrowed more from one side, the secret number
+            // is likely closer to that side
+            const rangeHistory = guessHistory.map(h => ({
+                lowerRange: h.newLow,
+                upperRange: h.newHigh
+            }));
+            
+            // Calculate how much each boundary has moved relative to original range (1-100)
+            const lowerMovement = (rangeHistory[rangeHistory.length - 1].lowerRange - 1) / 99;
+            const upperMovement = (100 - rangeHistory[rangeHistory.length - 1].upperRange) / 99;
+            
+            // If one boundary moved more, secret is likely closer to the other boundary
+            if (lowerMovement > upperMovement + 0.1) {
+                // Lower boundary moved more, secret likely closer to upper boundary
+                estimatedSecret = Math.floor(currentLow + (currentHigh - currentLow) * 0.7);
+            } else if (upperMovement > lowerMovement + 0.1) {
+                // Upper boundary moved more, secret likely closer to lower boundary
+                estimatedSecret = Math.floor(currentLow + (currentHigh - currentLow) * 0.3);
+            }
+        }
+        
+        // Find the valid guess closest to our estimated secret number
+        let closestGuess = validGuesses[0];
+        let minDistance = Math.abs(validGuesses[0] - estimatedSecret);
+        
+        for (let i = 1; i < validGuesses.length; i++) {
+            const distance = Math.abs(validGuesses[i] - estimatedSecret);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestGuess = validGuesses[i];
+            }
+        }
+        
+        return closestGuess;
     }
 
     // Initial call if needed (e.g. if game starts automatically without setup screen for dev)
