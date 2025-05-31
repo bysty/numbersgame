@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedbackCorrectBtn = document.getElementById('feedback-correct-btn');
 
     const guessHistoryList = document.getElementById('guess-history-list');
+    const roundResultMessage = document.getElementById('round-result-message');
     const newRoundBtn = document.getElementById('new-round-btn');
     const resetGameBtn = document.getElementById('reset-game-btn');
 
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let actualSecretNumber = null; // Only known by the host in a real game, for simulation/dev can be set
     let guessHistory = []; // Stores {player, guess, newLow, newHigh, wasCorrect}
     let validRangeNumbers = []; // Numbers that formed previous ranges, cannot be guessed.
+    let playersWhoHaveGuessedThisSubRound = new Set(); // Players who made a guess since last range update
 
     // --- SETUP ---
     startGameBtn.addEventListener('click', () => {
@@ -54,20 +56,29 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.remove('active');
         setupScreen.classList.add('active');
         // Full reset of state needed here if re-initializing
-        numPlayersInput.value = "2";
+        numPlayersInput.value = "2"; // Default back
         playerGuessInput.value = "";
+        hostPlayerIndex = 0; // Reset host to Player 1
+        // currentPlayerIndex will be set by initializeGame if we call it
+        // or we can set it here: currentPlayerIndex = (hostPlayerIndex + 1) % (numPlayers || 2);
+        playersWhoHaveGuessedThisSubRound.clear();
+        // Consider calling initializeGame() or a more specific reset function
+        // For now, just ensure critical state is reset for when setup screen leads to initializeGame
     });
 
     // --- INITIALIZATION ---
     function initializeGame() {
-        currentPlayerIndex = 0; // Player 1 starts
         hostPlayerIndex = 0;    // Player 1 is the first host
+        currentPlayerIndex = (hostPlayerIndex + 1) % numPlayers; // Player to the left of host starts
         currentLow = 1;
         currentHigh = 100;
         guessHistory = [];
         validRangeNumbers = [1, 100]; // Initial range boundaries
+        playersWhoHaveGuessedThisSubRound.clear();
         playerGuessInput.value = "";
         hostFeedbackSection.classList.add('hidden');
+        roundResultMessage.classList.add('hidden'); // Hide result message
+        roundResultMessage.textContent = "";
         submitGuessBtn.classList.remove('hidden');
         newRoundBtn.classList.add('hidden');
         updateGameDisplay();
@@ -131,15 +142,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (feedback === 'lower') { // Secret number is lower than the guess
             currentHigh = guess;
             validRangeNumbers.push(guess);
+            playersWhoHaveGuessedThisSubRound.clear(); // Range changed, reset who has guessed
         } else if (feedback === 'higher') { // Secret number is higher than the guess
             currentLow = guess;
             validRangeNumbers.push(guess);
+            playersWhoHaveGuessedThisSubRound.clear(); // Range changed, reset who has guessed
         } else if (feedback === 'correct') {
             wasCorrect = true;
             // Player loses, game round ends
-            alert(`Player ${currentPlayerIndex + 1} guessed the number ${guess} and loses this round!`);
+            roundResultMessage.textContent = `Player ${currentPlayerIndex + 1} guessed ${guess} and loses this round!`;
+            roundResultMessage.classList.remove('hidden');
             // Potentially add $10 to pot, etc. (not implemented in UI)
             newRoundBtn.classList.remove('hidden');
+            submitGuessBtn.classList.add('hidden'); // Hide submit button as round is over
         }
         
         historyEntry.newLow = currentLow;
@@ -151,6 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
         hostFeedbackSection.classList.add('hidden');
         
         if (!wasCorrect) {
+            if (currentPlayerIndex !== hostPlayerIndex) { // Don't add host to this list
+                playersWhoHaveGuessedThisSubRound.add(currentPlayerIndex);
+            }
             submitGuessBtn.classList.remove('hidden');
             advanceToNextPlayer();
             calculateAndDisplayOptimalGuess();
@@ -169,7 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentHigh = 100;
         guessHistory = []; // Clear history for the new round
         validRangeNumbers = [1, 100];
+        playersWhoHaveGuessedThisSubRound.clear();
         
+        roundResultMessage.classList.add('hidden'); // Hide for new round
+        roundResultMessage.textContent = "";
         newRoundBtn.classList.add('hidden');
         submitGuessBtn.classList.remove('hidden');
         updateGameDisplay();
@@ -178,15 +199,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GAME LOGIC & UPDATES ---
     function advanceToNextPlayer() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % numPlayers;
-        // Skip host if it's their turn to guess (they know the number)
-        if (currentPlayerIndex === hostPlayerIndex) {
-            currentPlayerIndex = (currentPlayerIndex + 1) % numPlayers;
+        // Handle edge case of single player
+        if (numPlayers <= 1) {
+            currentPlayerIndex = hostPlayerIndex;
+            return;
+        }
+        
+        // Get next player in sequence
+        let nextPlayer = (currentPlayerIndex + 1) % numPlayers;
+        
+        // Check if next player would be the Host
+        if (nextPlayer === hostPlayerIndex) {
+            // Count non-host players who have guessed in this sub-round
+            let nonHostPlayers = 0;
+            let nonHostPlayersWhoGuessed = 0;
+            
+            // Loop through all player indices
+            for (let i = 0; i < numPlayers; i++) {
+                if (i !== hostPlayerIndex) {
+                    nonHostPlayers++;
+                    if (playersWhoHaveGuessedThisSubRound.has(i)) {
+                        nonHostPlayersWhoGuessed++;
+                    }
+                }
+            }
+            
+            // If all non-host players have guessed, it's Host's forced turn
+            if (nonHostPlayersWhoGuessed >= nonHostPlayers) {
+                currentPlayerIndex = hostPlayerIndex;
+            } else {
+                // Skip host and go to next player
+                currentPlayerIndex = (hostPlayerIndex + 1) % numPlayers;
+            }
+        } else {
+            // Standard case - next player is not the host
+            currentPlayerIndex = nextPlayer;
         }
     }
 
     function updateGameDisplay() {
-        currentPlayerDisplay.textContent = `Player ${currentPlayerIndex + 1}`;
+        let playerTurnText = `Player ${currentPlayerIndex + 1}`;
+        
+        // Check if it's the host's forced turn
+        if (currentPlayerIndex === hostPlayerIndex) {
+            // Count non-host players who have guessed
+            let nonHostPlayers = 0;
+            let nonHostPlayersWhoGuessed = 0;
+            
+            for (let i = 0; i < numPlayers; i++) {
+                if (i !== hostPlayerIndex) {
+                    nonHostPlayers++;
+                    if (playersWhoHaveGuessedThisSubRound.has(i)) {
+                        nonHostPlayersWhoGuessed++;
+                    }
+                }
+            }
+            
+            // If all non-host players have guessed, it's a forced turn
+            if (nonHostPlayersWhoGuessed >= nonHostPlayers && numPlayers > 1) {
+                playerTurnText += " (Host's Forced Guess)";
+            }
+        }
+        
+        currentPlayerDisplay.textContent = playerTurnText;
         currentPlayerDisplay.classList.toggle('highlight', true); // Always highlight current player
         hostPlayerDisplay.textContent = `Player ${hostPlayerIndex + 1}`;
         currentLowDisplay.textContent = currentLow;
@@ -212,6 +287,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // This is where the core mathematical strategy will go.
         // For now, let's suggest a simple mid-point or a safe guess.
 
+        // Check if it's the host's forced turn
+        if (currentPlayerIndex === hostPlayerIndex) {
+            // Count non-host players who have guessed
+            let nonHostPlayers = 0;
+            let nonHostPlayersWhoGuessed = 0;
+            
+            for (let i = 0; i < numPlayers; i++) {
+                if (i !== hostPlayerIndex) {
+                    nonHostPlayers++;
+                    if (playersWhoHaveGuessedThisSubRound.has(i)) {
+                        nonHostPlayersWhoGuessed++;
+                    }
+                }
+            }
+            
+            // If all non-host players have guessed, it's a forced turn
+            if (nonHostPlayersWhoGuessed >= nonHostPlayers && numPlayers > 1) {
+                optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> Choose the closest available number to your secret number.";
+                return; // Don't calculate optimal guess for host in this scenario
+            }
+        }
+
         const guessableSlots = currentHigh - currentLow - 1;
         let optimalGuess = "";
 
@@ -221,119 +318,153 @@ document.addEventListener('DOMContentLoaded', () => {
             optimalGuess = `Forced to guess ${currentLow + 1}`;
         } else {
             // Try to find a "trap" guess
-            // Target player is "opposite": (currentPlayerIndex + numPlayers/2) % numPlayers
-            // For simplicity, let's assume we want to trap the *next* player (k=1)
-            // This means leaving 0 slots for them, which is not the game's goal.
-            // The goal is to leave *them* with 1 slot.
-            // So, if it's my turn (P0), and next is P1 (k=1 turn away), I want to make a guess G
-            // such that if G is not the number, the new range for P1 has 1 slot.
-            // This means the range I create for P1 must have U-L-1 = 1, so U-L = 2.
-            // Example: Range [10,13] -> P1 must guess 11. (L=10, U=12, not 13)
+            // The strategy is to make a guess that leaves exactly 1 slot for a target player
+            // This forces them into a situation where they have only one possible guess
             
-            // Let k be the number of turns until the target player.
-            // For "opposite" player:
-            let targetPlayerRelativeIndex;
-            if (numPlayers % 2 === 0) { // Even number of players
-                targetPlayerRelativeIndex = numPlayers / 2;
-            } else { // Odd number of players
-                targetPlayerRelativeIndex = Math.floor(numPlayers / 2); 
-                // Could also be Math.ceil, or user selectable "left opposite" / "right opposite"
+            // Simplified target player calculation - "opposite" player
+            // Find player roughly half-way around the circle from current player
+            let targetPlayerIndex = (currentPlayerIndex + Math.floor(numPlayers / 2)) % numPlayers;
+            
+            // Adjust if target is host - we'll target the next player after host
+            if (targetPlayerIndex === hostPlayerIndex) {
+                targetPlayerIndex = (targetPlayerIndex + 1) % numPlayers;
             }
             
-            // k = number of players between current and target (exclusive of current, inclusive of target if counting turns)
-            // Or, more simply, how many players will guess before the target.
-            let turnsToTarget = 0;
-            let tempPlayer = currentPlayerIndex;
-            let targetPlayerActualIndex = (currentPlayerIndex + targetPlayerRelativeIndex) % numPlayers;
-
-            // Adjust if target is host
-            if (targetPlayerActualIndex === hostPlayerIndex) {
-                 targetPlayerActualIndex = (targetPlayerActualIndex + 1) % numPlayers; // Aim for player after host
-                 // Recalculate relative index if this changes significantly
+            // Simplified calculation of turns to target player
+            // This avoids the complex loop that tried to account for host skipping
+            // Instead, we'll estimate based on player positions and adjust if needed
+            
+            let k; // Number of guesses before target player's turn
+            
+            // Calculate distance between current player and target
+            if (targetPlayerIndex > currentPlayerIndex) {
+                k = targetPlayerIndex - currentPlayerIndex;
+            } else {
+                k = numPlayers + targetPlayerIndex - currentPlayerIndex;
             }
-
-
-            let p = tempPlayer;
-            while(true) {
-                p = (p + 1) % numPlayers;
-                if (p === hostPlayerIndex) continue; // Skip host
-                turnsToTarget++;
-                if (p === targetPlayerActualIndex) break;
-                if (turnsToTarget > numPlayers) { // Safety break
-                    turnsToTarget = 1; // Default to next player if complex
-                    break;
+            
+            // Adjust for host skipping - if host is between current and target
+            // and it's not host's forced turn, the host gets skipped
+            let isHostBetween = false;
+            let nonHostPlayersWhoGuessed = 0;
+            let nonHostPlayers = 0;
+            
+            // Count players who have guessed
+            for (let i = 0; i < numPlayers; i++) {
+                if (i !== hostPlayerIndex) {
+                    nonHostPlayers++;
+                    if (playersWhoHaveGuessedThisSubRound.has(i)) {
+                        nonHostPlayersWhoGuessed++;
+                    }
                 }
             }
             
-            const k = turnsToTarget; // Number of guesses before target player's turn
-
-            // We want to leave k-1 slots for intermediate players.
-            // So the target player is left with 1 slot.
-            // The range for the target player should be [X, X+2] (e.g. [10,12] so they guess 11)
-            // This means the segment we create for them has 1 guessable slot.
-            // The total number of slots we need to "consume" with our guess + intermediate players is k.
-            // (1 for our guess, k-1 for intermediate players)
-
-            let G_trap1 = currentLow + k + 1; // Guessing G_trap1 leaves [currentLow, G_trap1-1]
-                                            // Slots in that range: (G_trap1-1) - currentLow - 1 = k-1
-            let G_trap2 = currentHigh - k - 1; // Guessing G_trap2 leaves [G_trap2+1, currentHigh]
-                                             // Slots in that range: currentHigh - (G_trap2+1) - 1 = k-1
+            // Check if host is between current player and target
+            if (hostPlayerIndex > currentPlayerIndex && hostPlayerIndex < targetPlayerIndex) {
+                isHostBetween = true;
+            } else if (currentPlayerIndex > targetPlayerIndex && 
+                     (hostPlayerIndex > currentPlayerIndex || hostPlayerIndex < targetPlayerIndex)) {
+                isHostBetween = true;
+            }
             
+            // If host is between and it's not their forced turn, reduce k by 1
+            if (isHostBetween && nonHostPlayersWhoGuessed < nonHostPlayers) {
+                k--;
+            }
+            
+            // Safety checks
+            if (k <= 0) k = 1;
+            if (k > numPlayers - 1) k = numPlayers - 1;
+
+            // Calculate trap guesses
+            // We want to make a guess that leaves exactly k-1 slots for intermediate players
+            // This ensures target player is left with exactly 1 choice
+            
+            // Trap Guess 1: if number is LOWER than our guess
+            // This creates range [currentLow, G_trap1-1] with k-1 slots
+            // Meaning: (G_trap1-1) - currentLow - 1 = k-1
+            // Solving for G_trap1: G_trap1 = currentLow + k + 1
+            let G_trap1 = currentLow + k + 1;
+            
+            // Trap Guess 2: if number is HIGHER than our guess
+            // This creates range [G_trap2+1, currentHigh] with k-1 slots
+            // Meaning: currentHigh - (G_trap2+1) - 1 = k-1
+            // Solving for G_trap2: G_trap2 = currentHigh - k - 1
+            let G_trap2 = currentHigh - k - 1;
+            
+            // Helper function to check if a number is a valid guess
+            function isValidGuess(num) {
+                return num > currentLow && 
+                       num < currentHigh && 
+                       !guessHistory.some(h => h.guess === num) && 
+                       !validRangeNumbers.includes(num);
+            }
+            
+            // Find valid trap guesses
             let candidateGuesses = [];
-            if (G_trap1 > currentLow && G_trap1 < currentHigh && !guessHistory.some(h => h.guess === G_trap1) && !validRangeNumbers.includes(G_trap1)) {
+            if (isValidGuess(G_trap1)) {
                 candidateGuesses.push(G_trap1);
             }
-            if (G_trap2 > currentLow && G_trap2 < currentHigh && !guessHistory.some(h => h.guess === G_trap2) && !validRangeNumbers.includes(G_trap2) && G_trap2 !== G_trap1) {
+            if (isValidGuess(G_trap2) && G_trap2 !== G_trap1) {
                 candidateGuesses.push(G_trap2);
             }
 
             if (candidateGuesses.length > 0) {
-                // Prefer the guess that makes the *other* segment larger (less likely to contain the secret number)
+                // If we have multiple trap options, prefer the one that makes the other segment larger
+                // This reduces the chance that the secret number is in our trap segment
                 if (candidateGuesses.length === 2) {
-                    // If G_trap1 is chosen, other segment is [G_trap1+1, currentHigh]
-                    // If G_trap2 is chosen, other segment is [currentLow, G_trap2-1]
-                    let slots_other1 = currentHigh - (G_trap1 + 1) - 1;
-                    let slots_other2 = (G_trap2 - 1) - currentLow - 1;
+                    // Calculate slots in complementary segments
+                    let slots_other1 = currentHigh - (G_trap1 + 1) - 1; // Slots if G_trap1 is chosen
+                    let slots_other2 = (G_trap2 - 1) - currentLow - 1;  // Slots if G_trap2 is chosen
+                    // Choose the guess that creates larger complementary segment
                     optimalGuess = slots_other1 >= slots_other2 ? G_trap1 : G_trap2;
                 } else {
                     optimalGuess = candidateGuesses[0];
                 }
-                optimalGuess = `Try to trap Player ${targetPlayerActualIndex + 1} with: ${optimalGuess}`;
+                optimalGuess = `Try to trap Player ${targetPlayerIndex + 1} with: ${optimalGuess}`;
             } else {
-                // Fallback: simple bisection, avoiding known bad numbers
-                let mid = Math.round((currentLow + currentHigh) / 2);
-                if (mid <= currentLow) mid = currentLow + 1;
-                if (mid >= currentHigh) mid = currentHigh - 1;
-
-                while ((guessHistory.some(h => h.guess === mid) || validRangeNumbers.includes(mid) || mid <= currentLow || mid >= currentHigh) && mid < currentHigh -1 ) {
-                    mid++; // Try next if mid is bad, up to a point
+                // Fallback: Find a safe guess if no trap is possible
+                
+                // First try bisection (middle of range)
+                let mid = Math.floor((currentLow + currentHigh) / 2);
+                
+                // Helper function to find next valid guess starting from a position
+                function findNextValidGuess(start, increment, limit) {
+                    let guess = start;
+                    while (!isValidGuess(guess) && 
+                          ((increment > 0 && guess < limit - 1) || 
+                           (increment < 0 && guess > limit + 1))) {
+                        guess += increment;
+                    }
+                    return isValidGuess(guess) ? guess : null;
                 }
-                 if ((guessHistory.some(h => h.guess === mid) || validRangeNumbers.includes(mid) || mid <= currentLow || mid >= currentHigh)) {
-                    // If still bad, try going down
-                    mid = Math.round((currentLow + currentHigh) / 2) -1;
-                     while ((guessHistory.some(h => h.guess === mid) || validRangeNumbers.includes(mid) || mid <= currentLow || mid >= currentHigh) && mid > currentLow + 1 ) {
-                        mid--; 
-                    }
-                 }
-
-
-                if (mid > currentLow && mid < currentHigh && !guessHistory.some(h => h.guess === mid) && !validRangeNumbers.includes(mid)) {
-                    optimalGuess = `Safe guess: ${mid}`;
-                } else {
-                    // Try first or last valid slot if midpoint is bad
-                    let firstValid = currentLow + 1;
-                    while((guessHistory.some(h => h.guess === firstValid) || validRangeNumbers.includes(firstValid)) && firstValid < currentHigh -1) firstValid++;
+                
+                // Try to find valid guesses using different strategies
+                let validGuess = findNextValidGuess(mid, 0, 0); // Check midpoint first
+                
+                if (!validGuess) {
+                    // Try searching up from midpoint
+                    validGuess = findNextValidGuess(mid, 1, currentHigh);
+                }
+                
+                if (!validGuess) {
+                    // Try searching down from midpoint
+                    validGuess = findNextValidGuess(mid, -1, currentLow);
+                }
+                
+                if (!validGuess) {
+                    // Last resort: try from bottom and top of range
+                    validGuess = findNextValidGuess(currentLow + 1, 1, currentHigh);
                     
-                    let lastValid = currentHigh - 1;
-                    while((guessHistory.some(h => h.guess === lastValid) || validRangeNumbers.includes(lastValid)) && lastValid > currentLow + 1) lastValid--;
-
-                    if (firstValid < currentHigh -1 && !guessHistory.some(h => h.guess === firstValid) && !validRangeNumbers.includes(firstValid)) {
-                         optimalGuess = `Safe guess: ${firstValid}`;
-                    } else if (lastValid > currentLow + 1 && !guessHistory.some(h => h.guess === lastValid) && !validRangeNumbers.includes(lastValid)) {
-                         optimalGuess = `Safe guess: ${lastValid}`;
-                    } else {
-                        optimalGuess = "Complex situation. Choose carefully!";
+                    if (!validGuess) {
+                        validGuess = findNextValidGuess(currentHigh - 1, -1, currentLow);
                     }
+                }
+                
+                if (validGuess) {
+                    optimalGuess = `Safe guess: ${validGuess}`;
+                } else {
+                    optimalGuess = "Complex situation. Choose carefully!";
                 }
             }
         }

@@ -19,14 +19,27 @@
                 <input type="number" id="num-players" min="2" max="10" value="2">
             </div>
             <button id="start-game-btn">Start Game</button>
+            <p class="version-number">v0.2</p>
         </div>
 
         <div id="game-screen" class="screen">
             <div id="game-info">
-                <p>Current Player: <span id="current-player-display"></span></p>
-                <p>Host: <span id="host-player-display"></span></p>
-                <p>Range: [<span id="current-low-display">1</span> - <span id="current-high-display">100</span>]</p>
-                <p>Optimal Guess for You: <strong id="optimal-guess-display"></strong></p>
+                <div class="info-box">
+                    <span class="info-label">Current Player:</span>
+                    <span id="current-player-display" class="info-value"></span>
+                </div>
+                <div class="info-box">
+                    <span class="info-label">Host:</span>
+                    <span id="host-player-display" class="info-value"></span>
+                </div>
+                <div class="info-box">
+                    <span class="info-label">Range:</span>
+                    <span class="info-value">[<span id="current-low-display">1</span> - <span id="current-high-display">100</span>]</span>
+                </div>
+                <div class="info-box">
+                    <span class="info-label">Optimal Guess:</span>
+                    <strong id="optimal-guess-display" class="info-value"></strong>
+                </div>
             </div>
 
             <div id="guess-input-section">
@@ -62,6 +75,7 @@
                     <!-- History items will be added here -->
                 </ul>
             </div>
+            <div id="round-result-message" class="hidden"></div>
              <button id="new-round-btn" class="hidden">Start New Round (New Host)</button>
              <button id="reset-game-btn">Reset Game (New Players)</button>
         </div>

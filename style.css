@@ -78,24 +78,53 @@ button:active {
     background-color: #004a9e;
 }
 
+.version-number {
+    font-size: 0.8em;
+    color: #8e8e93; /* Apple medium gray */
+    margin-top: 20px;
+    text-align: center;
+}
+
 #game-info {
     width: 100%;
-    max-width: 350px;
-    margin-bottom: 20px;
-    text-align: left;
-    padding: 10px;
+    max-width: 350px; /* Will be overridden by info-box width sum */
+    margin-bottom: 15px; /* Slightly reduced margin */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 10px; /* Spacing between info boxes */
+    padding: 0; /* Remove padding as boxes will have their own */
+    /* background-color: transparent; Remove background */
+    /* box-shadow: none; Remove shadow */
+}
+
+.info-box {
     background-color: #fff;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 10px 12px;
+    margin-bottom: 0; /* Handled by gap in parent */
+    flex-basis: calc(50% - 25px); /* Two boxes per row, accounting for gap and padding */
+    box-sizing: border-box;
+    text-align: left; /* Default, can be overridden */
 }
 
-#game-info p {
-    margin: 8px 0;
+.info-box .info-label {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 3px;
+}
+
+.info-box .info-value {
     font-size: 1em;
+    font-weight: 500;
 }
 
-#game-info strong {
+#game-info strong.info-value { /* For optimal guess */
     color: #007aff;
+    font-weight: bold;
 }
 
 #current-player-display.highlight {
@@ -105,7 +134,7 @@ button:active {
 
 #guess-input-section {
     width: 100%;
-    max-width: 300px;
+    max-width: 270px; /* 10% smaller: 300px * 0.9 = 270px */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -119,27 +148,27 @@ button:active {
 
 #player-guess {
     width: 100%;
-    padding: 10px;
-    font-size: 20px;
+    padding: 9px; /* ~10% smaller: 10px * 0.9 = 9px */
+    font-size: 18px; /* ~10% smaller: 20px * 0.9 = 18px */
     text-align: center;
     border: 1px solid #ccc;
     border-radius: 5px;
-    margin-bottom: 10px;
+    margin-bottom: 9px; /* ~10% smaller */
     background-color: #e9e9eb; /* Light gray for readonly input */
 }
 
 #keypad {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 9px; /* ~10% smaller: 10px * 0.9 = 9px */
     width: 100%;
-    max-width: 280px; /* Slightly smaller to fit padding/margins */
-    margin-bottom: 10px;
+    max-width: 252px; /* ~10% smaller: 280px * 0.9 = 252px */
+    margin-bottom: 9px; /* ~10% smaller */
 }
 
 #keypad .key {
-    padding: 15px;
-    font-size: 18px;
+    padding: 13px; /* ~10% smaller: 15px * 0.9 = 13.5px, rounded to 13px */
+    font-size: 16px; /* ~10% smaller: 18px * 0.9 = 16.2px, rounded to 16px */
     background-color: #e0e0e0;
     color: #333;
     border: 1px solid #ccc;
@@ -167,7 +196,7 @@ button:active {
 
 #submit-guess-btn {
     width: 100%;
-    max-width: 280px;
+    max-width: 252px; /* ~10% smaller: 280px * 0.9 = 252px */
 }
 
 #host-feedback-section {
@@ -255,6 +284,21 @@ button:active {
 
 .hidden {
     display: none !important;
+}
+
+#round-result-message {
+    width: 100%;
+    max-width: 350px;
+    padding: 10px;
+    margin: 15px 0;
+    background-color: #fff;
+    border: 1px solid #007aff; /* Blue border */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+    font-size: 1.1em;
+    color: #007aff; /* Blue text */
+    font-weight: bold;
 }
 
 #new-round-btn, #reset-game-btn {
