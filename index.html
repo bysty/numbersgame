@@ -7,8 +7,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Numbers Game Assistant</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="player-selection.css">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
 </head>
 <body>
     <div id="app-container">
@@ -18,8 +24,47 @@
                 <label for="num-players">How many players?</label>
                 <input type="number" id="num-players" min="2" max="10" value="2">
             </div>
-            <button id="start-game-btn">Start Game</button>
-            <p class="version-number">v0.4</p>
+            <button id="start-game-btn">Continue to Player Selection</button>
+            <p class="version-number">v0.5</p>
+        </div>
+
+        <div id="player-selection-screen" class="screen">
+            <h2>Select Players</h2>
+            <div id="table-visualization">
+                <div class="table-circle"></div>
+                <div id="player-positions"></div>
+            </div>
+            
+            <div id="player-selection-controls">
+                <div class="input-group">
+                    <label for="current-position">Current Position:</label>
+                    <select id="current-position"></select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="player-select">Select Player:</label>
+                    <select id="player-select">
+                        <option value="">-- Select a player --</option>
+                        <!-- Players will be loaded here -->
+                    </select>
+                </div>
+                
+                <div class="input-group" id="new-player-form">
+                    <label for="new-player-name">Or Add New Player:</label>
+                    <input type="text" id="new-player-name" placeholder="Enter player name">
+                    <button id="add-player-btn">Add Player</button>
+                </div>
+                
+                <button id="assign-player-btn">Assign to Position</button>
+            </div>
+            
+            <div id="selected-players-list">
+                <h3>Current Player Assignments</h3>
+                <ul id="assigned-players-list"></ul>
+            </div>
+            
+            <button id="start-game-with-players-btn" disabled>Start Game</button>
+            <button id="back-to-setup-btn">Back</button>
         </div>
 
         <div id="game-screen" class="screen">
@@ -90,6 +135,7 @@
         </div>
     </div>
     <script src="app.js"></script>
+    <script src="player-tracking.js"></script>
     <script>
         // Register Service Worker for PWA functionality
         if ('serviceWorker' in navigator) {

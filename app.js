@@ -1,3 +1,11 @@
+// Make key functions and variables accessible from the window object for player tracking
+window.processHostFeedback = null; // Will be assigned in initialization
+window.currentLow = 1;
+window.currentHigh = 100;
+window.hostPlayerIndex = 0;
+window.currentPlayerIndex = 0;
+window.guessHistory = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     // Screens
     const setupScreen = document.getElementById('setup-screen');
@@ -72,13 +80,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INITIALIZATION ---
-    function initializeGame() {
+    window.initializeGame = function() {
+        // Initialize local state
         hostPlayerIndex = 0;    // Player 1 is the first host
         currentPlayerIndex = (hostPlayerIndex + 1) % numPlayers; // Player to the left of host starts
         currentLow = 1;
         currentHigh = 100;
         guessHistory = [];
         validRangeNumbers = [1, 100]; // Initial range boundaries
+        
+        // Sync with global state for player tracking
+        window.hostPlayerIndex = hostPlayerIndex;
+        window.currentPlayerIndex = currentPlayerIndex;
+        window.currentLow = currentLow;
+        window.currentHigh = currentHigh;
+        window.guessHistory = guessHistory;
         playersWhoHaveGuessedThisSubRound.clear();
         playerGuessInput.value = "";
         hostFeedbackSection.classList.add('hidden');
@@ -248,7 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateGameDisplay();
     }
 
-    function processHostFeedback(feedback) {
+    // Make processHostFeedback globally accessible for player tracking
+    window.processHostFeedback = function(feedback) {
         const guess = parseInt(playerGuessInput.value);
         let wasCorrect = false;
 
@@ -261,10 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (feedback === 'lower') { // Secret number is lower than the guess
             currentHigh = guess;
+            window.currentHigh = currentHigh; // Update global state
             validRangeNumbers.push(guess);
             playersWhoHaveGuessedThisSubRound.clear(); // Range changed, reset who has guessed
         } else if (feedback === 'higher') { // Secret number is higher than the guess
             currentLow = guess;
+            window.currentLow = currentLow; // Update global state
             validRangeNumbers.push(guess);
             playersWhoHaveGuessedThisSubRound.clear(); // Range changed, reset who has guessed
         } else if (feedback === 'correct') {
@@ -281,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         historyEntry.newHigh = currentHigh;
         historyEntry.wasCorrect = wasCorrect;
         guessHistory.push(historyEntry);
+        window.guessHistory = guessHistory; // Update global state
 
         playerGuessInput.value = ""; // Clear input for next guess
         hostFeedbackSection.classList.add('hidden');
@@ -291,21 +311,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             submitGuessBtn.classList.remove('hidden');
             advanceToNextPlayer();
+            window.currentPlayerIndex = currentPlayerIndex; // Update global state
             calculateAndDisplayOptimalGuess();
         }
         updateGameDisplay();
+        return feedback; // Return the feedback for tracking purposes
     }
 
     // --- NEW ROUND ---
     newRoundBtn.addEventListener('click', () => {
         // The loser becomes the new host
-        hostPlayerIndex = currentPlayerIndex; 
+        hostPlayerIndex = currentPlayerIndex;
+        window.hostPlayerIndex = hostPlayerIndex; // Update global state
+        
         // Player to the left of the new host starts
-        currentPlayerIndex = (hostPlayerIndex + 1) % numPlayers; 
+        currentPlayerIndex = (hostPlayerIndex + 1) % numPlayers;
+        window.currentPlayerIndex = currentPlayerIndex; // Update global state
         
         currentLow = 1;
         currentHigh = 100;
+        window.currentLow = currentLow; // Update global state
+        window.currentHigh = currentHigh; // Update global state
+        
         guessHistory = []; // Clear history for the new round
+        window.guessHistory = guessHistory; // Update global state
+        
         validRangeNumbers = [1, 100];
         playersWhoHaveGuessedThisSubRound.clear();
         
