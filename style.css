@@ -1,0 +1,284 @@
+body, html {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    overflow: hidden; /* Prevent scrolling on the body */
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.screen {
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* Align items to the top */
+    padding: 20px;
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto; /* Allow scrolling within a screen if content overflows */
+}
+
+.screen.active {
+    display: flex; /* Show active screen */
+}
+
+h1 {
+    color: #007aff; /* Apple blue */
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.input-group input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+button {
+    background-color: #007aff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #005ecb;
+}
+
+button:active {
+    background-color: #004a9e;
+}
+
+#game-info {
+    width: 100%;
+    max-width: 350px;
+    margin-bottom: 20px;
+    text-align: left;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#game-info p {
+    margin: 8px 0;
+    font-size: 1em;
+}
+
+#game-info strong {
+    color: #007aff;
+}
+
+#current-player-display.highlight {
+    font-weight: bold;
+    color: #34c759; /* Apple green */
+}
+
+#guess-input-section {
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+#guess-input-section label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+#player-guess {
+    width: 100%;
+    padding: 10px;
+    font-size: 20px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: #e9e9eb; /* Light gray for readonly input */
+}
+
+#keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 280px; /* Slightly smaller to fit padding/margins */
+    margin-bottom: 10px;
+}
+
+#keypad .key {
+    padding: 15px;
+    font-size: 18px;
+    background-color: #e0e0e0;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+#keypad .key:active {
+    background-color: #c0c0c0;
+}
+
+#keypad .enter {
+    background-color: #34c759; /* Apple green */
+    color: white;
+}
+#keypad .enter:active {
+    background-color: #28a745;
+}
+#keypad .clear {
+    background-color: #ff3b30; /* Apple red */
+    color: white;
+}
+#keypad .clear:active {
+    background-color: #d93025;
+}
+
+
+#submit-guess-btn {
+    width: 100%;
+    max-width: 280px;
+}
+
+#host-feedback-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+}
+
+#host-feedback-section p {
+    margin-bottom: 10px;
+}
+
+#host-feedback-section button {
+    margin: 5px;
+    /* width: calc(50% - 10px); Remove old width */
+}
+
+.feedback-icon-btn {
+    font-size: 24px; /* Adjust icon size */
+    padding: 8px 12px; /* Smaller padding */
+    min-width: 50px; /* Ensure a minimum tap area */
+    width: calc(33.333% - 10px); /* Fit three buttons in a row */
+    box-sizing: border-box;
+}
+
+/* Remove specific styling for the correct button if it's now an icon */
+#host-feedback-section button#feedback-correct-btn {
+    background-color: #007aff; /* Reset to default or a new consistent color */
+}
+#host-feedback-section button#feedback-correct-btn:hover {
+    background-color: #005ecb; /* Reset to default or a new consistent color */
+}
+#host-feedback-section button#feedback-correct-btn:active {
+    background-color: #004a9e; /* Reset to default or a new consistent color */
+}
+
+/* Ensure the parent div can lay them out correctly */
+#host-feedback-section {
+    margin-top: 15px; /* Reduced margin */
+    padding: 10px; /* Reduced padding */
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Softer shadow */
+    width: 100%;
+    max-width: 300px; /* Make it more compact */
+    text-align: center;
+    display: flex; /* Use flexbox for alignment */
+    justify-content: space-around; /* Distribute buttons evenly */
+    align-items: center;
+}
+
+
+#guess-history-section {
+    width: 100%;
+    max-width: 350px;
+    margin-top: 20px;
+    text-align: left;
+}
+
+#guess-history-list {
+    list-style-type: none;
+    padding: 0;
+    max-height: 150px; /* Limit height and allow scroll */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #fff;
+}
+
+#guess-history-list li {
+    padding: 5px 0;
+    border-bottom: 1px dashed #eee;
+    font-size: 0.9em;
+}
+
+#guess-history-list li:last-child {
+    border-bottom: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#new-round-btn, #reset-game-btn {
+    margin-top: 15px;
+    background-color: #5856d6; /* Apple purple */
+}
+#new-round-btn:hover, #reset-game-btn:hover {
+    background-color: #4341a0;
+}
+
+/* iPhone specific considerations */
+@media (max-width: 480px) { /* Common breakpoint for phones */
+    #keypad {
+        gap: 8px; /* Slightly smaller gap on smaller screens */
+    }
+    #keypad .key {
+        padding: 12px; /* Slightly smaller padding */
+        font-size: 16px;
+    }
+    button {
+        padding: 10px 15px;
+        font-size: 15px;
+    }
+    #game-info p {
+        font-size: 0.95em;
+    }
+}
