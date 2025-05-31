@@ -19,7 +19,7 @@
                 <input type="number" id="num-players" min="2" max="10" value="2">
             </div>
             <button id="start-game-btn">Start Game</button>
-            <p class="version-number">v0.3</p>
+            <p class="version-number">v0.4</p>
         </div>
 
         <div id="game-screen" class="screen">
@@ -39,6 +39,15 @@
                 <div class="info-box">
                     <span class="info-label">Optimal Guess:</span>
                     <strong id="optimal-guess-display" class="info-value"></strong>
+                </div>
+            </div>
+
+            <div id="host-choice-section" class="hidden">
+                <p>Host, as this is your forced turn, choose the closest number to your secret:</p>
+                <div class="host-choice-buttons">
+                    <button id="host-pick-higher-btn" class="host-choice-btn">Pick Higher ⬆️</button>
+                    <button id="host-pick-lower-btn" class="host-choice-btn">Pick Lower ⬇️</button>
+                    <button id="host-pick-exact-btn" class="host-choice-btn">Got It Exact 🎯</button>
                 </div>
             </div>
 

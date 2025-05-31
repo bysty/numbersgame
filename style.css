@@ -199,6 +199,48 @@ button:active {
     max-width: 252px; /* ~10% smaller: 280px * 0.9 = 252px */
 }
 
+#host-choice-section {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+#host-choice-section p {
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #007aff;
+}
+
+.host-choice-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.host-choice-btn {
+    background-color: #34c759; /* Apple green */
+    padding: 10px 15px;
+    margin: 0;
+}
+
+#host-pick-higher-btn {
+    background-color: #5856d6; /* Apple purple */
+}
+
+#host-pick-lower-btn {
+    background-color: #5856d6; /* Apple purple */
+}
+
+#host-pick-exact-btn {
+    background-color: #ff3b30; /* Apple red */
+}
+
 #host-feedback-section {
     margin-top: 20px;
     padding: 15px;

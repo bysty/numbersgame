@@ -18,6 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const keypadButtons = document.querySelectorAll('#keypad .key');
     const submitGuessBtn = document.getElementById('submit-guess-btn');
 
+    const hostChoiceSection = document.getElementById('host-choice-section');
+    const hostPickHigherBtn = document.getElementById('host-pick-higher-btn');
+    const hostPickLowerBtn = document.getElementById('host-pick-lower-btn');
+    const hostPickExactBtn = document.getElementById('host-pick-exact-btn');
+
     const hostFeedbackSection = document.getElementById('host-feedback-section');
     const submittedGuessValueDisplay = document.getElementById('submitted-guess-value');
     const feedbackLowerBtn = document.getElementById('feedback-lower-btn');
@@ -77,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playersWhoHaveGuessedThisSubRound.clear();
         playerGuessInput.value = "";
         hostFeedbackSection.classList.add('hidden');
+        hostChoiceSection.classList.add('hidden'); // Hide host choice section
         roundResultMessage.classList.add('hidden'); // Hide result message
         roundResultMessage.textContent = "";
         submitGuessBtn.classList.remove('hidden');
@@ -123,10 +129,124 @@ document.addEventListener('DOMContentLoaded', () => {
         submitGuessBtn.classList.add('hidden'); // Hide submit until feedback
     });
 
+    // --- HOST CHOICE HANDLING ---
+    hostPickHigherBtn.addEventListener('click', () => processHostChoice('higher'));
+    hostPickLowerBtn.addEventListener('click', () => processHostChoice('lower'));
+    hostPickExactBtn.addEventListener('click', () => processHostChoice('exact'));
+
     // --- HOST FEEDBACK HANDLING ---
     feedbackLowerBtn.addEventListener('click', () => processHostFeedback('lower'));
     feedbackHigherBtn.addEventListener('click', () => processHostFeedback('higher'));
     feedbackCorrectBtn.addEventListener('click', () => processHostFeedback('correct'));
+
+    function processHostChoice(choice) {
+        // Find valid guesses for the host's choice
+        const validGuesses = [];
+        for (let num = currentLow + 1; num < currentHigh; num++) {
+            if (isValidGuess(num)) {
+                validGuesses.push(num);
+            }
+        }
+        
+        if (validGuesses.length === 0) {
+            alert("No valid guesses available!");
+            return;
+        }
+        
+        // Estimate the host's secret number based on previous guesses
+        let estimatedSecret = Math.floor((currentLow + currentHigh) / 2);
+        
+        if (guessHistory.length >= 2) {
+            const rangeHistory = guessHistory.map(h => ({
+                lowerRange: h.newLow,
+                upperRange: h.newHigh
+            }));
+            
+            const lowerMovement = (rangeHistory[rangeHistory.length - 1].lowerRange - 1) / 99;
+            const upperMovement = (100 - rangeHistory[rangeHistory.length - 1].upperRange) / 99;
+            
+            if (lowerMovement > upperMovement + 0.1) {
+                estimatedSecret = Math.floor(currentLow + (currentHigh - currentLow) * 0.7);
+            } else if (upperMovement > lowerMovement + 0.1) {
+                estimatedSecret = Math.floor(currentLow + (currentHigh - currentLow) * 0.3);
+            }
+        }
+        
+        let selectedGuess;
+        
+        if (choice === 'higher') {
+            // Find the closest valid guess that's higher than the estimated secret
+            const higherGuesses = validGuesses.filter(g => g > estimatedSecret);
+            
+            if (higherGuesses.length === 0) {
+                // If no higher guesses, take the highest available
+                selectedGuess = Math.max(...validGuesses);
+            } else {
+                // Take the closest higher guess
+                selectedGuess = Math.min(...higherGuesses);
+            }
+        } else if (choice === 'lower') {
+            // Find the closest valid guess that's lower than the estimated secret
+            const lowerGuesses = validGuesses.filter(g => g < estimatedSecret);
+            
+            if (lowerGuesses.length === 0) {
+                // If no lower guesses, take the lowest available
+                selectedGuess = Math.min(...validGuesses);
+            } else {
+                // Take the closest lower guess
+                selectedGuess = Math.max(...lowerGuesses);
+            }
+        } else if (choice === 'exact') {
+            // For exact, take the guess closest to the estimated secret
+            let closestGuess = validGuesses[0];
+            let minDistance = Math.abs(validGuesses[0] - estimatedSecret);
+            
+            for (let i = 1; i < validGuesses.length; i++) {
+                const distance = Math.abs(validGuesses[i] - estimatedSecret);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestGuess = validGuesses[i];
+                }
+            }
+            
+            selectedGuess = closestGuess;
+        }
+        
+        // Hide host choice section and update UI for the selected guess
+        hostChoiceSection.classList.add('hidden');
+        
+        // Set the selected guess in the input and update the display
+        playerGuessInput.value = selectedGuess;
+        
+        // If it's the "exact" choice (which means the host loses), handle accordingly
+        if (choice === 'exact') {
+            // Host picked "exact", they lose the round
+            const historyEntry = {
+                player: currentPlayerIndex + 1,
+                guess: selectedGuess,
+                previousLow: currentLow,
+                previousHigh: currentHigh,
+                newLow: currentLow,
+                newHigh: currentHigh,
+                wasCorrect: true
+            };
+            
+            guessHistory.push(historyEntry);
+            
+            // Host loses the round
+            roundResultMessage.textContent = `Player ${currentPlayerIndex + 1} (Host) chose ${selectedGuess} as exact match and loses this round!`;
+            roundResultMessage.classList.remove('hidden');
+            newRoundBtn.classList.remove('hidden');
+            submitGuessBtn.classList.add('hidden');
+            hostChoiceSection.classList.add('hidden');
+        } else {
+            // For higher/lower choices, submit the guess for regular feedback
+            submittedGuessValueDisplay.textContent = selectedGuess;
+            hostFeedbackSection.classList.remove('hidden');
+        }
+        
+        updateGameDisplay();
+    }
 
     function processHostFeedback(feedback) {
         const guess = parseInt(playerGuessInput.value);
@@ -192,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
         roundResultMessage.classList.add('hidden'); // Hide for new round
         roundResultMessage.textContent = "";
         newRoundBtn.classList.add('hidden');
+        hostChoiceSection.classList.add('hidden'); // Hide host choice section
+        hostFeedbackSection.classList.add('hidden'); // Hide host feedback section
         submitGuessBtn.classList.remove('hidden');
         updateGameDisplay();
         calculateAndDisplayOptimalGuess();
@@ -302,42 +424,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // If all non-host players have guessed, it's a forced turn
             if (nonHostPlayersWhoGuessed >= nonHostPlayers && numPlayers > 1) {
-                const forcedGuess = calculateHostForcedGuess();
-                if (forcedGuess) {
-                    optimalGuessDisplay.innerHTML = `<strong>Host's Forced Guess:</strong> ${forcedGuess} (closest to secret number)`;
-                    // Add a visual indicator to the game screen
-                    const hostGuessIndicator = document.createElement('div');
-                    hostGuessIndicator.className = 'host-guess-indicator';
-                    hostGuessIndicator.textContent = `Auto-selecting for host: ${forcedGuess}`;
-                    
-                    // Insert the indicator before the guess input section
-                    const guessInputSection = document.getElementById('guess-input-section');
-                    if (guessInputSection.previousElementSibling.className !== 'host-guess-indicator') {
-                        guessInputSection.parentNode.insertBefore(hostGuessIndicator, guessInputSection);
-                    }
-                    
-                    // Auto-submit the host's guess if we have a valid forced guess
-                    if (isValidGuess(forcedGuess)) {
-                        playerGuessInput.value = forcedGuess;
-                        submitGuessBtn.textContent = `Auto-submitting ${forcedGuess}...`;
-                        setTimeout(() => {
-                            submitGuessBtn.click();
-                            // Reset button text after submission
-                            setTimeout(() => {
-                                submitGuessBtn.textContent = "Submit Guess";
-                                // Remove the indicator after processing
-                                const indicators = document.getElementsByClassName('host-guess-indicator');
-                                while (indicators.length > 0) {
-                                    indicators[0].parentNode.removeChild(indicators[0]);
-                                }
-                            }, 500);
-                        }, 1500); // Slightly longer delay for better UI feedback
-                    } else {
-                        optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> No valid guesses available!";
-                    }
-                } else {
-                    optimalGuessDisplay.innerHTML = "<strong>Host's Forced Guess:</strong> Unable to calculate - need secret number.";
+                // Show host's choice UI instead of auto-submitting
+                optimalGuessDisplay.innerHTML = "<strong>Host's Forced Turn:</strong> Choose the closest number to your secret";
+                
+                // Hide regular guess input and show host choice UI
+                submitGuessBtn.classList.add('hidden');
+                hostChoiceSection.classList.remove('hidden');
+                
+                // Hide any previous host guess indicator
+                const indicators = document.getElementsByClassName('host-guess-indicator');
+                while (indicators.length > 0) {
+                    indicators[0].parentNode.removeChild(indicators[0]);
                 }
+                
                 return; // Don't calculate optimal guess for host in this scenario
             }
         }
